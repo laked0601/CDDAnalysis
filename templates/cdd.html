@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IndividualData</title>
+    <style type="text/css">
+        #selection_form input, label{
+            display: block;
+        }
+        #selection_form *{
+            margin: 4px;
+        }
+        #selection_form{
+            border: 2px solid black;
+            margin: 2px;
+            padding: 2px;
+            width: 410px;
+        }
+        #form_output{
+            border-collapse: collapse;
+        }
+        #form_output td, th{
+            border: 2px solid black;
+            padding: 2px;
+        }
+        #info_at_glance p{
+            display: inline;
+        }
+    </style>
+</head>
+<body>
+<form id="selection_form" method="GET" action="api">
+    <label for="name">Name</label>
+    <input id="name" name="name" value="">
+    <label for="nationality">Nationality</label>
+    <input id="nationality" name="nationality" value="">
+    <label for="sanctions">Sanctions</label>
+    <input id="sanctions" name="sanctions" value="">
+    <label for="notes">Notes</label>
+    <input id="notes" name="notes" value="">
+    <label for="dob">Date of Birth</label>
+    <input id="dob" name="dob" value="">
+    <label for="page">Page</label>
+    <input id="page" name="page" type="number" value="1" min="1" max="999999">
+    <label for="datasource">Data Source</label>
+    <select id="datasource" name="datasource">
+        <option value=""></option>
+        {% for ds in datasources %}
+        <option value="{{ ds }}">{{ ds }}</option>
+        {% endfor %}
+    </select>
+    <button type="button" onclick="get_data(this.parentNode)">Submit</button>
+    <div id="info_at_glance">
+        <p>Total Rows on All Pages:</p><p id="total_rows"></p><p>Rows for this Query:</p><p id="query_rows"></p>
+    </div>
+    <p><b>Though reasonable efforts have been made to ensure that this data is accurate, it is intended only for demonstrational purposes of how an SQL framework can check for an individual across multiple data sources.<br>Please visit the relevant links to access up to date records:</b></p>
+    <ul>
+        <li><a href="https://www.gov.uk/government/publications/the-uk-sanctions-list">UK Sanctions List</a></li>
+        <li><a href="https://www.interpol.int/en/How-we-work/Notices/View-Red-Notices">Interpol Red Notices</a></li>
+        <li><a href="https://offshoreleaks.icij.org/search?c=&cat=1&d=&j=">ICIJ Officers</a></li>
+    </ul>
+    <p>To download this data as a csv file, <a href="Individuals.zip">click here</a></p>
+    <img id="loading_gif" src="/resources/loading.gif" style="display: none;">
+</form>
+<h3 id="message"></h3>
+<table id="form_output">
+    <thead></thead>
+    <tbody></tbody>
+</table>
+</body>
+<script>
+function get_data(form_element){
+    document.querySelector("#loading_gif").style = "display: block";
+    var form = new FormData(form_element);
+    var params = new URLSearchParams(form);
+    console.log("api?" + params);
+    fetch("api?" + params, {
+        method: "GET",
+    }).then(
+        response => response.json()
+    ).then(
+        data => {handle_result(data);}
+    ).catch(error => {
+        console.error(error);
+        document.querySelector("#message").innerHTML = "Error when processing request. Please try again later.";
+        document.querySelector("#loading_gif").style = "display: none;";
+    });
+}
+function empty(table_element){
+    while (table_element.childElementCount != 0){
+        table_element.deleteRow(-1);
+    }
+}
+function handle_result(api_data){
+    var thead = document.querySelector("#form_output>thead");
+    empty(thead);
+    var tbody = document.querySelector("#form_output>tbody");
+    empty(tbody);
+    var jsonList = api_data["rows"];
+    document.querySelector("#loading_gif").style = "display: none";
+    document.querySelector("#total_rows").innerHTML = api_data["totalrows"].toString();
+    document.querySelector("#query_rows").innerHTML = api_data["rows"].length.toString();
+    if (jsonList.length == 0){
+        document.querySelector("#message").innerHTML = "No Results for Query";
+        return;
+    } else {
+        document.querySelector("#message").innerHTML = "";
+    }
+    // Create the header row
+    const headerRow = document.createElement('tr');
+    for (const key in jsonList[0]) {
+        const th = document.createElement('th');
+        th.textContent = key;
+        headerRow.appendChild(th);
+    }
+    thead.appendChild(headerRow);
+
+    // Create the table body rows
+    for (const json of jsonList) {
+        const bodyRow = document.createElement('tr');
+        for (const key in json) {
+        const td = document.createElement('td');
+        td.textContent = json[key];
+        bodyRow.appendChild(td);
+    }
+        tbody.appendChild(bodyRow);
+    }
+}
+</script>
+</html>
